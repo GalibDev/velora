@@ -19,3 +19,12 @@ services:
     container_name: velora-yt-session
     init: true
     restart: unless-stopped
+
+  ytdlp-fallback:
+    build:
+      context: ../ytdlp
+    container_name: velora-ytdlp
+    init: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9100:9100"

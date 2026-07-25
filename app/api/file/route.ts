@@ -32,6 +32,8 @@ function contentDisposition(filename: string) {
 
 export async function GET(request: NextRequest) {
   const endpoint = process.env.COBALT_API_URL;
+  const fallbackUrl = process.env.YTDLP_FALLBACK_URL
+    || (endpoint?.startsWith("http://localhost:") ? "http://localhost:9100/" : undefined);
   const targetValue = request.nextUrl.searchParams.get("url");
   const sourceValue = request.nextUrl.searchParams.get("source");
   if (!endpoint || (!targetValue && !sourceValue)) {
@@ -96,7 +98,37 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const upstream = await fetch(target, { redirect: "follow" });
+    let upstream = await fetch(target, { redirect: "follow" });
+    let fallbackFilename: string | undefined;
+
+    // Some YouTube videos produce a successful Cobalt tunnel with an empty
+    // body. Resolve a fresh progressive media URL locally instead of sending
+    // Chrome a misleading 0-byte download.
+    if (
+      sourceValue
+      && request.nextUrl.searchParams.get("format") !== "audio"
+      && upstream.headers.get("content-length") === "0"
+      && fallbackUrl
+    ) {
+      const fallbackEndpoint = new URL("/resolve", fallbackUrl);
+      const fallbackResponse = await fetch(fallbackEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: sourceValue,
+          quality: request.nextUrl.searchParams.get("quality") || "720",
+        }),
+      });
+      const fallback = await fallbackResponse.json() as {
+        url?: string;
+        filename?: string;
+      };
+      if (fallbackResponse.ok && fallback.url) {
+        upstream = await fetch(fallback.url, { redirect: "follow" });
+        fallbackFilename = fallback.filename;
+      }
+    }
+
     if (!upstream.ok || !upstream.body) {
       return NextResponse.json(
         { error: `ভিডিও stream পাওয়া যায়নি (${upstream.status})।` },
@@ -106,6 +138,7 @@ export async function GET(request: NextRequest) {
 
     const filename = safeFilename(
       request.nextUrl.searchParams.get("filename")
+      || fallbackFilename
       || upstream.headers.get("content-disposition")?.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)/i)?.[1]
       || null,
     );
