@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
         audioFormat: "mp3",
         youtubeVideoContainer: "mp4",
         filenameStyle: "pretty",
+        alwaysProxy: true,
       }),
     });
 
@@ -54,7 +55,14 @@ export async function POST(request: NextRequest) {
     if (!["http:", "https:"].includes(downloadUrl.protocol)) {
       return NextResponse.json({ error: "অনিরাপদ download URL বাতিল করা হয়েছে।" }, { status: 502 });
     }
-    return NextResponse.json({ url: downloadUrl.toString(), filename: data.filename });
+    const localDownload = new URL("/api/file", request.nextUrl.origin);
+    localDownload.searchParams.set("url", downloadUrl.toString());
+    if (data.filename) localDownload.searchParams.set("filename", data.filename);
+
+    return NextResponse.json({
+      url: localDownload.toString(),
+      filename: data.filename,
+    });
   } catch {
     return NextResponse.json({ error: "অনুরোধটি ঠিকভাবে পড়া যায়নি।" }, { status: 400 });
   }
