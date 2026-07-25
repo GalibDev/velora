@@ -55,12 +55,14 @@ export async function POST(request: NextRequest) {
     if (!["http:", "https:"].includes(downloadUrl.protocol)) {
       return NextResponse.json({ error: "অনিরাপদ download URL বাতিল করা হয়েছে।" }, { status: 502 });
     }
-    const localDownload = new URL("/api/file", request.nextUrl.origin);
+    // Keep the handoff on the same origin. An absolute URL can point at the
+    // wrong localhost port when multiple dev servers are running.
+    const localDownload = new URL("/api/file", "http://velora.local");
     localDownload.searchParams.set("url", downloadUrl.toString());
     if (data.filename) localDownload.searchParams.set("filename", data.filename);
 
     return NextResponse.json({
-      url: localDownload.toString(),
+      url: `${localDownload.pathname}${localDownload.search}`,
       filename: data.filename,
     });
   } catch {
