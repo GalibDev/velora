@@ -59,27 +59,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const reader = upstream.body.getReader();
-    const first = await reader.read();
-    if (first.done || !first.value?.byteLength) {
-      await reader.cancel();
-      return NextResponse.json({ error: "ভিডিও stream খালি এসেছে। আবার চেষ্টা করুন।" }, { status: 502 });
-    }
-
-    const stream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        controller.enqueue(first.value);
-      },
-      async pull(controller) {
-        const chunk = await reader.read();
-        if (chunk.done) controller.close();
-        else controller.enqueue(chunk.value);
-      },
-      cancel(reason) {
-        return reader.cancel(reason);
-      },
-    });
-
     const filename = safeFilename(
       request.nextUrl.searchParams.get("filename")
       || upstream.headers.get("content-disposition")?.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)/i)?.[1]
@@ -89,10 +68,12 @@ export async function GET(request: NextRequest) {
     headers.set("Content-Type", upstream.headers.get("content-type") || "application/octet-stream");
     headers.set("Content-Disposition", contentDisposition(filename));
     headers.set("Cache-Control", "private, no-store");
-    const length = upstream.headers.get("content-length") || upstream.headers.get("estimated-content-length");
+    // Never promote Cobalt's estimated length to Content-Length. Chrome treats
+    // even a tiny mismatch as an interrupted download ("Site wasn't available").
+    const length = upstream.headers.get("content-length");
     if (length && Number(length) > 0) headers.set("Content-Length", length);
 
-    return new Response(stream, { status: 200, headers });
+    return new Response(upstream.body, { status: 200, headers });
   } catch {
     return NextResponse.json(
       { error: "Cobalt থেকে ভিডিও stream আনা যায়নি। আবার চেষ্টা করুন।" },
