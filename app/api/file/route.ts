@@ -33,15 +33,60 @@ function contentDisposition(filename: string) {
 export async function GET(request: NextRequest) {
   const endpoint = process.env.COBALT_API_URL;
   const targetValue = request.nextUrl.searchParams.get("url");
-  if (!endpoint || !targetValue) {
+  const sourceValue = request.nextUrl.searchParams.get("source");
+  if (!endpoint || (!targetValue && !sourceValue)) {
     return NextResponse.json({ error: "Download URL পাওয়া যায়নি।" }, { status: 400 });
   }
 
   let target: URL;
   let cobaltOrigin: string;
   try {
-    target = new URL(targetValue);
     cobaltOrigin = new URL(endpoint).origin;
+    if (sourceValue) {
+      const source = new URL(sourceValue);
+      const youtubeHosts = new Set(["youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be", "music.youtube.com"]);
+      if (!youtubeHosts.has(source.hostname)) {
+        return NextResponse.json({ error: "শুধু YouTube লিংক সমর্থিত।" }, { status: 400 });
+      }
+
+      const format = request.nextUrl.searchParams.get("format") === "audio" ? "audio" : "video";
+      const quality = request.nextUrl.searchParams.get("quality") || (format === "audio" ? "320" : "1080");
+      const headers: Record<string, string> = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+      };
+      if (process.env.COBALT_API_TOKEN) {
+        headers.Authorization = `Api-Key ${process.env.COBALT_API_TOKEN}`;
+      }
+
+      const prepare = await fetch(endpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          url: source.toString(),
+          downloadMode: format === "audio" ? "audio" : "auto",
+          videoQuality: format === "video" ? quality : undefined,
+          audioBitrate: format === "audio" ? quality : undefined,
+          audioFormat: "mp3",
+          youtubeVideoContainer: "mp4",
+          filenameStyle: "pretty",
+          alwaysProxy: true,
+        }),
+      });
+      const prepared = await prepare.json() as {
+        url?: string;
+        error?: { code?: string };
+      };
+      if (!prepare.ok || !prepared.url) {
+        return NextResponse.json(
+          { error: prepared.error?.code || "Video stream could not be prepared." },
+          { status: 502 },
+        );
+      }
+      target = new URL(prepared.url);
+    } else {
+      target = new URL(targetValue!);
+    }
   } catch {
     return NextResponse.json({ error: "Download URL সঠিক নয়।" }, { status: 400 });
   }

@@ -51,14 +51,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const downloadUrl = new URL(data.url);
-    if (!["http:", "https:"].includes(downloadUrl.protocol)) {
-      return NextResponse.json({ error: "অনিরাপদ download URL বাতিল করা হয়েছে।" }, { status: 502 });
-    }
-    // Keep the handoff on the same origin. An absolute URL can point at the
-    // wrong localhost port when multiple dev servers are running.
+    // Cobalt tunnel URLs expire quickly. Pass the original request to the
+    // same-origin file route so it can obtain a fresh tunnel at click time.
     const localDownload = new URL("/api/file", "http://velora.local");
-    localDownload.searchParams.set("url", downloadUrl.toString());
+    localDownload.searchParams.set("source", body.url);
+    localDownload.searchParams.set("format", body.format === "audio" ? "audio" : "video");
+    localDownload.searchParams.set("quality", body.quality || (body.format === "audio" ? "320" : "1080"));
     if (data.filename) localDownload.searchParams.set("filename", data.filename);
 
     return NextResponse.json({
