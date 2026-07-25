@@ -1,0 +1,12 @@
+services:
+  cobalt:
+    image: ghcr.io/imputnet/cobalt:11
+    container_name: velora-cobalt
+    init: true
+    read_only: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9000:9000"
+    environment:
+      API_URL: "http://localhost:9000/"
+
