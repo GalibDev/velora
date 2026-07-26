@@ -320,4 +320,3 @@ Velora কোনো piracy service নয়। শুধু নিজের বা
 ## License
 
 এই repository-তে ব্যবহৃত third-party project ও Docker image নিজ নিজ license-এর অধীন। Cobalt-related code বা deployment প্রকাশ/পরিবর্তনের সময় Cobalt-এর AGPL license requirements যাচাই করুন।
-
