@@ -20,7 +20,7 @@ Velora হলো Next.js, TypeScript ও Tailwind CSS দিয়ে তৈরি 
 - বাংলা responsive user interface
 - Windows-compatible npm scripts
 
-## Download flow
+## Download flow...
 
 ```text
 Browser
