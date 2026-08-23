@@ -17,7 +17,7 @@ Velora হলো Next.js, TypeScript ও Tailwind CSS দিয়ে তৈরি 
 - Cobalt 0-byte stream দিলে automatic `yt-dlp` fallback
 - Expired Cobalt tunnel এড়াতে click-time fresh stream
 - Same-origin download proxy
-- বাংলা responsive user interface------------
+- বাংলা responsive user interface---------------------
 - Windows-compatible npm scripts
 ---------------------------------------------------------hhhh
 ## Download flow.................................
